@@ -1,28 +1,37 @@
+"""
+Versión simplificada para Render
+"""
 from flask import Flask, render_template, request, jsonify
-import pandas as pd
-import numpy as np
-from cleaning_rate_predictor import CleaningRatePredictor
 import os
+import sys
 
-app = Flask(__name__)
+# Añadir el directorio actual al path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Inicializar el predictor
-predictor = CleaningRatePredictor()
-
-# Verificar si existe un modelo preentrenado
-model_path = 'cleaning_rate_model.pkl'
-if os.path.exists(model_path):
-    try:
-        predictor.load_model(model_path)
-        print("Modelo preentrenado cargado exitosamente")
-    except:
+try:
+    from cleaning_rate_predictor import CleaningRatePredictor
+    predictor = CleaningRatePredictor()
+    
+    # Verificar si existe un modelo preentrenado
+    model_path = 'cleaning_rate_model.pkl'
+    if os.path.exists(model_path):
+        try:
+            predictor.load_model(model_path)
+            print("Modelo preentrenado cargado exitosamente")
+        except:
+            print("Entrenando nuevo modelo...")
+            predictor.train()
+            predictor.save_model(model_path)
+    else:
         print("Entrenando nuevo modelo...")
         predictor.train()
         predictor.save_model(model_path)
-else:
-    print("Entrenando nuevo modelo...")
-    predictor.train()
-    predictor.save_model(model_path)
+        
+except Exception as e:
+    print(f"Error inicializando predictor: {e}")
+    predictor = None
+
+app = Flask(__name__)
 
 @app.route('/')
 def index():
@@ -34,6 +43,9 @@ def health():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    if predictor is None:
+        return jsonify({'error': 'Modelo no disponible'}), 500
+        
     try:
         # Obtener datos del formulario
         data = request.get_json()
@@ -82,24 +94,19 @@ def predict():
 @app.route('/get_states')
 def get_states():
     """Retorna lista de estados disponibles"""
+    if predictor is None:
+        return jsonify({'error': 'Modelo no disponible'}), 500
     states = list(predictor.market_data['state_cost_index'].keys())
     return jsonify({'states': sorted(states)})
 
 @app.route('/get_city_types')
 def get_city_types():
     """Retorna tipos de ciudad disponibles"""
+    if predictor is None:
+        return jsonify({'error': 'Modelo no disponible'}), 500
     city_types = list(predictor.market_data['city_type_multiplier'].keys())
     return jsonify({'city_types': city_types})
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV') != 'production'
-    app.run(debug=debug, host='0.0.0.0', port=port)
-else:
-    # Para Render, asegurar que la app esté configurada correctamente
-    import os
-    if os.environ.get('RENDER'):
-        # En Render, usar el puerto de la variable de entorno
-        port = int(os.environ.get('PORT', 5000))
-        app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)

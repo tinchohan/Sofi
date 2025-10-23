@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Tarifas de Limpieza</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin: 2rem auto;
+            max-width: 1200px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+        }
+        
+        .form-section {
+            padding: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #4facfe;
+            box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        }
+        
+        .btn-predict {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 1rem 2rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: white;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn-predict:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .result-card {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+            text-align: center;
+            display: none;
+        }
+        
+        .price-display {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+        
+        .confidence-interval {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .factors-list {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .factor-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .factor-item:last-child {
+            border-bottom: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .info-icon {
+            color: #4facfe;
+            margin-left: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .tooltip-inner {
+            background-color: #333;
+            color: white;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="header">
+                <h1><i class="fas fa-calculator"></i> Calculadora de Tarifas de Limpieza</h1>
+                <p class="mb-0">Predice el costo de limpieza para propiedades en Estados Unidos</p>
+            </div>
+            
+            <div class="form-section">
+                <form id="predictionForm">
+                    <div class="row">
+                        <!-- Información de la Propiedad -->
+                        <div class="col-md-6">
+                            <h4 class="mb-4"><i class="fas fa-home"></i> Información de la Propiedad</h4>
+                            
+                            <div class="form-group">
+                                <label for="sqft" class="form-label">
+                                    Metros Cuadrados
+                                    <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" 
+                                       title="Área total de la propiedad en metros cuadrados"></i>
+                                </label>
+                                <input type="number" class="form-control" id="sqft" name="sqft" 
+                                       min="100" max="20000" step="50" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="bedrooms" class="form-label">
+                                    Número de Habitaciones
+                                    <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" 
+                                       title="Número total de dormitorios"></i>
+                                </label>
+                                <input type="number" class="form-control" id="bedrooms" name="bedrooms" 
+                                       min="1" max="20" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="bathrooms" class="form-label">
+                                    Número de Baños
+                                    <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" 
+                                       title="Número total de baños (incluye medios baños como 0.5)"></i>
+                                </label>
+                                <input type="number" class="form-control" id="bathrooms" name="bathrooms" 
+                                       min="1" max="20" step="0.5" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="property_type" class="form-label">Tipo de Propiedad</label>
+                                <select class="form-select" id="property_type" name="property_type" required>
+                                    <option value="">Seleccionar tipo...</option>
+                                    <option value="house">Casa</option>
+                                    <option value="apartment">Apartamento</option>
+                                    <option value="condo">Condominio</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Información del Mercado y Servicio -->
+                        <div class="col-md-6">
+                            <h4 class="mb-4"><i class="fas fa-map-marker-alt"></i> Ubicación y Servicio</h4>
+                            
+                            <div class="form-group">
+                                <label for="state" class="form-label">Estado</label>
+                                <select class="form-select" id="state" name="state" required>
+                                    <option value="">Seleccionar estado...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="city_type" class="form-label">Tipo de Ciudad</label>
+                                <select class="form-select" id="city_type" name="city_type" required>
+                                    <option value="">Seleccionar tipo...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="cleaning_type" class="form-label">Tipo de Limpieza</label>
+                                <select class="form-select" id="cleaning_type" name="cleaning_type" required>
+                                    <option value="">Seleccionar tipo...</option>
+                                    <option value="basic">Limpieza Básica</option>
+                                    <option value="deep">Limpieza Profunda</option>
+                                    <option value="post_construction">Post-Construcción</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="frequency" class="form-label">Frecuencia</label>
+                                <select class="form-select" id="frequency" name="frequency" required>
+                                    <option value="">Seleccionar frecuencia...</option>
+                                    <option value="one_time">Una vez</option>
+                                    <option value="weekly">Semanal</option>
+                                    <option value="monthly">Mensual</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-predict">
+                            <i class="fas fa-calculator"></i> Calcular Tarifa
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Loading -->
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p class="mt-3">Calculando tarifa...</p>
+                </div>
+                
+                <!-- Error Message -->
+                <div class="error-message" id="errorMessage"></div>
+                
+                <!-- Result -->
+                <div class="result-card" id="resultCard">
+                    <h3><i class="fas fa-dollar-sign"></i> Tarifa Estimada</h3>
+                    <div class="price-display" id="predictedRate">$0</div>
+                    <div class="confidence-interval" id="confidenceInterval">
+                        Rango: $0 - $0
+                    </div>
+                    
+                    <div class="factors-list">
+                        <h5><i class="fas fa-info-circle"></i> Factores Considerados</h5>
+                        <div id="factorsList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Cargar estados y tipos de ciudad al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStates();
+            loadCityTypes();
+            initializeTooltips();
+        });
+        
+        function loadStates() {
+            fetch('/get_states')
+                .then(response => response.json())
+                .then(data => {
+                    const stateSelect = document.getElementById('state');
+                    data.states.forEach(state => {
+                        const option = document.createElement('option');
+                        option.value = state;
+                        option.textContent = state;
+                        stateSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error cargando estados:', error));
+        }
+        
+        function loadCityTypes() {
+            fetch('/get_city_types')
+                .then(response => response.json())
+                .then(data => {
+                    const cityTypeSelect = document.getElementById('city_type');
+                    const cityTypeLabels = {
+                        'major_metro': 'Metrópolis Principal',
+                        'large_city': 'Ciudad Grande',
+                        'medium_city': 'Ciudad Mediana',
+                        'small_city': 'Ciudad Pequeña',
+                        'rural': 'Área Rural'
+                    };
+                    
+                    data.city_types.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type;
+                        option.textContent = cityTypeLabels[type] || type;
+                        cityTypeSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error cargando tipos de ciudad:', error));
+        }
+        
+        function initializeTooltips() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+        
+        // Manejar envío del formulario
+        document.getElementById('predictionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Ocultar resultados anteriores
+            document.getElementById('resultCard').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            // Mostrar loading
+            document.getElementById('loading').style.display = 'block';
+            
+            // Recopilar datos del formulario
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Convertir números
+            data.sqft = parseFloat(data.sqft);
+            data.bedrooms = parseInt(data.bedrooms);
+            data.bathrooms = parseFloat(data.bathrooms);
+            
+            // Hacer petición
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                document.getElementById('loading').style.display = 'none';
+                
+                if (result.success) {
+                    displayResult(result.prediction);
+                } else {
+                    displayError(result.error);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                displayError('Error de conexión: ' + error.message);
+            });
+        });
+        
+        function displayResult(prediction) {
+            const resultCard = document.getElementById('resultCard');
+            const predictedRate = document.getElementById('predictedRate');
+            const confidenceInterval = document.getElementById('confidenceInterval');
+            const factorsList = document.getElementById('factorsList');
+            
+            // Mostrar precio
+            predictedRate.textContent = `$${prediction.predicted_rate}`;
+            confidenceInterval.textContent = 
+                `Rango: $${prediction.confidence_interval.lower} - $${prediction.confidence_interval.upper}`;
+            
+            // Mostrar factores
+            factorsList.innerHTML = '';
+            const factors = prediction.factors_considered;
+            
+            const factorLabels = {
+                'property_size': 'Tamaño de la propiedad',
+                'bedrooms': 'Habitaciones',
+                'bathrooms': 'Baños',
+                'property_type': 'Tipo de propiedad',
+                'location': 'Ubicación',
+                'cleaning_type': 'Tipo de limpieza',
+                'frequency': 'Frecuencia'
+            };
+            
+            const propertyTypeLabels = {
+                'house': 'Casa',
+                'apartment': 'Apartamento',
+                'condo': 'Condominio'
+            };
+            
+            const cleaningTypeLabels = {
+                'basic': 'Básica',
+                'deep': 'Profunda',
+                'post_construction': 'Post-Construcción'
+            };
+            
+            const frequencyLabels = {
+                'one_time': 'Una vez',
+                'weekly': 'Semanal',
+                'monthly': 'Mensual'
+            };
+            
+            Object.entries(factors).forEach(([key, value]) => {
+                const factorItem = document.createElement('div');
+                factorItem.className = 'factor-item';
+                
+                let displayValue = value;
+                if (key === 'property_type') {
+                    displayValue = propertyTypeLabels[value] || value;
+                } else if (key === 'cleaning_type') {
+                    displayValue = cleaningTypeLabels[value] || value;
+                } else if (key === 'frequency') {
+                    displayValue = frequencyLabels[value] || value;
+                } else if (key === 'property_size') {
+                    displayValue = `${value} m²`;
+                }
+                
+                factorItem.innerHTML = `
+                    <span>${factorLabels[key] || key}:</span>
+                    <span>${displayValue}</span>
+                `;
+                factorsList.appendChild(factorItem);
+            });
+            
+            resultCard.style.display = 'block';
+        }
+        
+        function displayError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

@@ -149,8 +149,8 @@
                     <div class="col-12">
                         <h4><i class="fas fa-info-circle"></i> Instrucciones</h4>
                         <div class="step-card">
-                            <h5>1. Prepara tu archivo Excel</h5>
-                            <p>Asegúrate de que tu archivo Excel tenga estas columnas:</p>
+                            <h5>1. Prepara tu archivo (Excel o CSV)</h5>
+                            <p>Asegúrate de que tu archivo tenga estas columnas:</p>
                             <ul>
                                 <li><strong>sqft</strong> - Metros cuadrados de la propiedad</li>
                                 <li><strong>bedrooms</strong> - Número de habitaciones</li>
@@ -169,13 +169,13 @@
                 <!-- Área de carga -->
                 <div class="row">
                     <div class="col-md-6">
-                        <h4><i class="fas fa-upload"></i> Subir Archivo Excel</h4>
+                        <h4><i class="fas fa-upload"></i> Subir Archivo (Excel o CSV)</h4>
                         <div class="upload-area" id="uploadArea">
                             <i class="fas fa-file-excel fa-4x text-success mb-3"></i>
-                            <h5>Arrastra tu archivo Excel aquí</h5>
-                            <p>o haz clic para seleccionar</p>
-                            <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
-                            <button class="btn btn-custom" onclick="document.getElementById('excelFile').click()">
+                            <h5>Arrastra tu archivo aquí</h5>
+                            <p>Excel (.xlsx, .xls) o CSV (.csv)</p>
+                            <input type="file" id="dataFile" accept=".xlsx,.xls,.csv" style="display: none;">
+                            <button class="btn btn-custom" onclick="document.getElementById('dataFile').click()">
                                 <i class="fas fa-folder-open"></i> Seleccionar Archivo
                             </button>
                         </div>
@@ -190,11 +190,16 @@
                     <div class="col-md-6">
                         <h4><i class="fas fa-download"></i> Descargar Template</h4>
                         <div class="info-card">
-                            <h5><i class="fas fa-file-excel"></i> Template Excel</h5>
-                            <p>Descarga un archivo Excel de ejemplo con el formato correcto</p>
-                            <button class="btn btn-custom" onclick="downloadTemplate()">
-                                <i class="fas fa-download"></i> Descargar Template
-                            </button>
+                            <h5><i class="fas fa-file-excel"></i> Templates</h5>
+                            <p>Descarga archivos de ejemplo con el formato correcto</p>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-custom" onclick="downloadTemplate()">
+                                    <i class="fas fa-file-excel"></i> Descargar Excel
+                                </button>
+                                <button class="btn btn-custom" onclick="downloadTemplateCSV()">
+                                    <i class="fas fa-file-csv"></i> Descargar CSV
+                                </button>
+                            </div>
                         </div>
                         
                         <div class="mt-3">
@@ -373,11 +378,11 @@
         }
         
         // Manejo de carga de archivos
-        document.getElementById('excelFile').addEventListener('change', function(e) {
+        document.getElementById('dataFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
                 showFileInfo(file);
-                uploadExcel(file);
+                uploadFile(file);
             }
         });
         
@@ -403,21 +408,21 @@
             e.preventDefault();
             uploadArea.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
-            if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+            if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv'))) {
                 showFileInfo(file);
-                uploadExcel(file);
+                uploadFile(file);
             } else {
-                showAlert('Por favor selecciona un archivo Excel (.xlsx o .xls)', 'warning');
+                showAlert('Por favor selecciona un archivo Excel (.xlsx, .xls) o CSV (.csv)', 'warning');
             }
         });
         
-        function uploadExcel(file) {
+        function uploadFile(file) {
             const formData = new FormData();
             formData.append('file', file);
             
             showLoading(true);
             
-            fetch('/upload_excel', {
+            fetch('/upload_file', {
                 method: 'POST',
                 body: formData
             })
@@ -425,17 +430,17 @@
             .then(data => {
                 showLoading(false);
                 if (data.success) {
-                    showAlert('Archivo Excel cargado y modelo entrenado exitosamente', 'success');
+                    showAlert(data.message, 'success');
                     showStats(data.data_summary);
                     document.getElementById('exportBtn').style.display = 'inline-block';
                     loadModelInfo();
                 } else {
-                    showAlert(data.error, 'danger');
+                    showDetailedError(data);
                 }
             })
             .catch(error => {
                 showLoading(false);
-                showAlert('Error cargando archivo Excel', 'danger');
+                showAlert('Error cargando archivo', 'danger');
             });
         }
         
@@ -453,7 +458,25 @@
                     document.body.removeChild(a);
                 })
                 .catch(error => {
-                    showAlert('Error descargando template', 'danger');
+                    showAlert('Error descargando template Excel', 'danger');
+                });
+        }
+        
+        function downloadTemplateCSV() {
+            fetch('/download_template_csv')
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'template_cleaning_data.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    showAlert('Error descargando template CSV', 'danger');
                 });
         }
         
@@ -534,6 +557,35 @@
                 </div>
             `;
             alertsDiv.innerHTML = alertHtml;
+        }
+        
+        function showDetailedError(data) {
+            const alertsDiv = document.getElementById('alerts');
+            
+            let errorHtml = `
+                <div class="alert alert-danger alert-custom alert-dismissible fade show" role="alert">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Error al procesar archivo</h6>
+                    <p>${data.error}</p>
+            `;
+            
+            if (data.suggestions && data.suggestions.length > 0) {
+                errorHtml += `
+                    <hr>
+                    <h6><i class="fas fa-lightbulb"></i> Sugerencias:</h6>
+                    <ul class="mb-0">
+                `;
+                data.suggestions.forEach(suggestion => {
+                    errorHtml += `<li>${suggestion}</li>`;
+                });
+                errorHtml += `</ul>`;
+            }
+            
+            errorHtml += `
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            alertsDiv.innerHTML = errorHtml;
         }
     </script>
 </body>

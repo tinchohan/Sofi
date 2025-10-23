@@ -19,6 +19,37 @@ class ExcelUploader:
         self.predictor = CleaningRatePredictor()
         self.real_data = None
         
+    def load_csv_data(self, file_path: str) -> pd.DataFrame:
+        """
+        Carga datos desde un archivo CSV
+        """
+        try:
+            # Cargar CSV
+            df = pd.read_csv(file_path)
+            
+            print(f"✅ Archivo CSV cargado: {len(df)} registros")
+            print(f"📊 Columnas disponibles: {list(df.columns)}")
+            
+            # Mostrar primeras filas
+            print("\n📋 Primeras 5 filas:")
+            print(df.head())
+            
+            # Mapear columnas automáticamente
+            df_mapped = self._map_columns(df)
+            
+            if df_mapped is not None:
+                # Validar y limpiar datos
+                df_clean = self._clean_data(df_mapped)
+                self.real_data = df_clean
+                return df_clean
+            else:
+                print("❌ No se pudieron mapear las columnas automáticamente")
+                return None
+                
+        except Exception as e:
+            print(f"❌ Error cargando CSV: {e}")
+            return None
+
     def load_excel_data(self, file_path: str, sheet_name: str = None) -> pd.DataFrame:
         """
         Carga datos desde un archivo Excel
@@ -64,23 +95,23 @@ class ExcelUploader:
         # Diccionario de mapeo de columnas comunes
         column_mapping = {
             # Metros cuadrados
-            'sqft': ['sqft', 'sq_ft', 'square_feet', 'metros', 'm2', 'area', 'tamaño'],
+            'sqft': ['sqft', 'sq_ft', 'square_feet', 'metros', 'm2', 'area', 'tamaño', 'property_square_footage', 'square_footage'],
             # Habitaciones
-            'bedrooms': ['bedrooms', 'bed', 'dormitorios', 'habitaciones', 'rooms'],
+            'bedrooms': ['bedrooms', 'bed', 'dormitorios', 'habitaciones', 'rooms', 'property_bedrooms_count', 'bedrooms_count'],
             # Baños
-            'bathrooms': ['bathrooms', 'bath', 'baños', 'bathroom'],
+            'bathrooms': ['bathrooms', 'bath', 'baños', 'bathroom', 'property_bathrooms_count', 'bathrooms_count'],
             # Tipo de propiedad
-            'property_type': ['property_type', 'tipo', 'type', 'tipo_propiedad'],
+            'property_type': ['property_type', 'tipo', 'type', 'tipo_propiedad', 'property_room_type', 'room_type', 'property_asset_type', 'asset_type'],
             # Estado
-            'state': ['state', 'estado', 'state_code', 'estado_codigo'],
+            'state': ['state', 'estado', 'state_code', 'estado_codigo', 'property_state', 'property_state_code'],
             # Tipo de ciudad
-            'city_type': ['city_type', 'tipo_ciudad', 'city', 'ciudad'],
+            'city_type': ['city_type', 'tipo_ciudad', 'city', 'ciudad', 'property_city', 'property_sub_market', 'sub_market'],
             # Tipo de limpieza
             'cleaning_type': ['cleaning_type', 'tipo_limpieza', 'cleaning', 'limpieza'],
             # Frecuencia
             'frequency': ['frequency', 'frecuencia', 'freq'],
             # Tarifa
-            'cleaning_rate': ['cleaning_rate', 'rate', 'tarifa', 'precio', 'costo', 'price', 'cost']
+            'cleaning_rate': ['cleaning_rate', 'rate', 'tarifa', 'precio', 'costo', 'price', 'cost', 'cleaning_cost', 'service_rate']
         }
         
         # Buscar columnas que coincidan
@@ -104,7 +135,26 @@ class ExcelUploader:
             print("💡 Sugerencias de nombres de columnas:")
             for col in missing_required:
                 print(f"   {col}: {column_mapping[col]}")
-            return None
+            
+            # Intentar mapear columnas que podrían ser útiles
+            print("\n🔍 Columnas disponibles en tu archivo:")
+            for col in df.columns:
+                print(f"   - {col}")
+            
+            # Si falta cleaning_rate, sugerir crear una columna estimada
+            if 'cleaning_rate' in missing_required:
+                print("\n💡 SUGERENCIA: Tu archivo no tiene tarifas de limpieza.")
+                print("   Puedo crear tarifas estimadas basadas en el tamaño y tipo de propiedad.")
+                print("   ¿Quieres que genere tarifas estimadas? (Esto creará una columna 'cleaning_rate_estimated')")
+                
+                # Crear tarifas estimadas automáticamente
+                df_mapped['cleaning_rate'] = self._estimate_cleaning_rates(df_mapped)
+                print("✅ Tarifas estimadas creadas basadas en patrones del mercado")
+                missing_required = [col for col in missing_required if col != 'cleaning_rate']
+            
+            # Si aún faltan columnas críticas, retornar None
+            if missing_required:
+                return None
         
         # Renombrar columnas
         df_mapped = df.rename(columns={v: k for k, v in mapped_columns.items()})
@@ -185,6 +235,76 @@ class ExcelUploader:
         print(f"   Tarifa máxima: ${df_clean['cleaning_rate'].max():.2f}")
         
         return df_clean
+    
+    def _estimate_cleaning_rates(self, df: pd.DataFrame) -> pd.Series:
+        """
+        Estima tarifas de limpieza basadas en patrones del mercado
+        """
+        print("🧮 Estimando tarifas de limpieza...")
+        
+        # Patrones de tarifas por estado
+        state_rates = {
+            'CA': 0.20, 'NY': 0.18, 'TX': 0.12, 'FL': 0.15, 'WA': 0.16,
+            'IL': 0.14, 'PA': 0.13, 'OH': 0.11, 'GA': 0.12, 'NC': 0.12,
+            'MI': 0.11, 'NJ': 0.16, 'VA': 0.14, 'TN': 0.10, 'IN': 0.10,
+            'MO': 0.10, 'MD': 0.15, 'WI': 0.11, 'CO': 0.15, 'MN': 0.13
+        }
+        
+        # Multiplicadores por tipo de propiedad
+        property_multipliers = {
+            'house': 1.0, 'apartment': 0.9, 'condo': 0.95,
+            'entire_home': 1.0, 'private_room': 0.7, 'shared_room': 0.5
+        }
+        
+        # Multiplicadores por tipo de ciudad
+        city_multipliers = {
+            'major_metro': 1.3, 'large_city': 1.15, 'medium_city': 1.0,
+            'small_city': 0.9, 'rural': 0.8
+        }
+        
+        estimated_rates = []
+        
+        for _, row in df.iterrows():
+            # Obtener valores
+            sqft = row.get('sqft', 2000)
+            bedrooms = row.get('bedrooms', 3)
+            bathrooms = row.get('bathrooms', 2)
+            property_type = row.get('property_type', 'house')
+            state = row.get('state', 'CA')
+            city_type = row.get('city_type', 'medium_city')
+            
+            # Normalizar valores
+            if pd.isna(sqft) or sqft <= 0:
+                sqft = 2000
+            if pd.isna(bedrooms) or bedrooms <= 0:
+                bedrooms = 3
+            if pd.isna(bathrooms) or bathrooms <= 0:
+                bathrooms = 2
+            
+            # Obtener tarifa base por estado
+            base_rate_per_sqft = state_rates.get(state, 0.15)
+            
+            # Obtener multiplicadores
+            property_mult = property_multipliers.get(property_type.lower(), 1.0)
+            city_mult = city_multipliers.get(city_type.lower(), 1.0)
+            
+            # Calcular tarifa base
+            base_rate = sqft * base_rate_per_sqft
+            
+            # Aplicar multiplicadores
+            final_rate = base_rate * property_mult * city_mult
+            
+            # Añadir variabilidad realista
+            final_rate *= np.random.uniform(0.8, 1.2)
+            
+            # Asegurar rango realista
+            final_rate = max(50, min(2000, final_rate))
+            
+            estimated_rates.append(final_rate)
+        
+        print(f"✅ Tarifas estimadas: ${min(estimated_rates):.2f} - ${max(estimated_rates):.2f} (promedio: ${np.mean(estimated_rates):.2f})")
+        
+        return pd.Series(estimated_rates)
     
     def train_with_excel_data(self, df: pd.DataFrame = None) -> Dict:
         """

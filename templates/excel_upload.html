@@ -152,16 +152,20 @@
                             <h5>1. Prepara tu archivo (Excel o CSV)</h5>
                             <p>Asegúrate de que tu archivo tenga estas columnas:</p>
                             <ul>
-                                <li><strong>sqft</strong> - Metros cuadrados de la propiedad</li>
+                                <li><strong>sqft</strong> - Metros cuadrados de la propiedad (se convierte automáticamente a sqft)</li>
                                 <li><strong>bedrooms</strong> - Número de habitaciones</li>
                                 <li><strong>bathrooms</strong> - Número de baños</li>
-                                <li><strong>cleaning_rate</strong> - Tarifa de limpieza (precio)</li>
+                                <li><strong>cleaning_rate</strong> - Tarifa de limpieza (precio) - <em>Opcional: se estima automáticamente</em></li>
                                 <li><strong>property_type</strong> - Tipo de propiedad (house, apartment, condo)</li>
                                 <li><strong>state</strong> - Estado (CA, NY, TX, etc.)</li>
                                 <li><strong>city_type</strong> - Tipo de ciudad (major_metro, large_city, etc.)</li>
                                 <li><strong>cleaning_type</strong> - Tipo de limpieza (basic, deep, post_construction)</li>
                                 <li><strong>frequency</strong> - Frecuencia (one_time, weekly, monthly)</li>
                             </ul>
+                            <div class="alert alert-info mt-3">
+                                <strong>💡 Nota:</strong> Si tu archivo tiene metros cuadrados, el sistema los convertirá automáticamente a sqft. 
+                                Si no tienes tarifas de limpieza, el sistema las estimará basándose en el tamaño y tipo de propiedad.
+                            </div>
                         </div>
                     </div>
                 </div>

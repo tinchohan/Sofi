@@ -94,8 +94,8 @@ class ExcelUploader:
         """
         # Diccionario de mapeo de columnas comunes
         column_mapping = {
-            # Metros cuadrados
-            'sqft': ['sqft', 'sq_ft', 'square_feet', 'metros', 'm2', 'area', 'tamaño', 'property_square_footage', 'square_footage'],
+            # Metros cuadrados (sqft) - incluye conversión de metros a sqft
+            'sqft': ['sqft', 'sq_ft', 'square_feet', 'metros', 'm2', 'area', 'tamaño', 'property_square_footage', 'square_footage', 'square_meters', 'sq_meters'],
             # Habitaciones
             'bedrooms': ['bedrooms', 'bed', 'dormitorios', 'habitaciones', 'rooms', 'property_bedrooms_count', 'bedrooms_count'],
             # Baños
@@ -141,11 +141,10 @@ class ExcelUploader:
             for col in df.columns:
                 print(f"   - {col}")
             
-            # Si falta cleaning_rate, sugerir crear una columna estimada
+            # Si falta cleaning_rate, crear tarifas estimadas automáticamente
             if 'cleaning_rate' in missing_required:
                 print("\n💡 SUGERENCIA: Tu archivo no tiene tarifas de limpieza.")
-                print("   Puedo crear tarifas estimadas basadas en el tamaño y tipo de propiedad.")
-                print("   ¿Quieres que genere tarifas estimadas? (Esto creará una columna 'cleaning_rate_estimated')")
+                print("   Creando tarifas estimadas basadas en el tamaño y tipo de propiedad...")
                 
                 # Crear tarifas estimadas automáticamente
                 df_mapped['cleaning_rate'] = self._estimate_cleaning_rates(df_mapped)
@@ -158,6 +157,10 @@ class ExcelUploader:
         
         # Renombrar columnas
         df_mapped = df.rename(columns={v: k for k, v in mapped_columns.items()})
+        
+        # Convertir metros cuadrados a sqft si es necesario
+        if 'sqft' in df_mapped.columns:
+            df_mapped = self._convert_sqft_if_needed(df_mapped)
         
         # Añadir columnas faltantes con valores por defecto
         if 'property_type' not in mapped_columns:
@@ -235,6 +238,29 @@ class ExcelUploader:
         print(f"   Tarifa máxima: ${df_clean['cleaning_rate'].max():.2f}")
         
         return df_clean
+    
+    def _convert_sqft_if_needed(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Convierte metros cuadrados a sqft si es necesario
+        """
+        if 'sqft' not in df.columns:
+            return df
+        
+        # Detectar si los valores están en metros cuadrados o sqft
+        # Los metros cuadrados típicamente tienen valores más pequeños
+        # Un apartamento de 100 m² = ~1076 sqft
+        avg_sqft = df['sqft'].mean()
+        
+        # Si el promedio es menor a 500, probablemente son metros cuadrados
+        if avg_sqft < 500:
+            print(f"🔄 Detectado: Valores en metros cuadrados (promedio: {avg_sqft:.0f})")
+            print("   Convirtiendo a sqft (metros² × 10.764 = sqft)")
+            df['sqft'] = df['sqft'] * 10.764
+            print(f"   ✅ Convertido: Nuevo promedio {df['sqft'].mean():.0f} sqft")
+        else:
+            print(f"✅ Valores ya en sqft (promedio: {avg_sqft:.0f})")
+        
+        return df
     
     def _estimate_cleaning_rates(self, df: pd.DataFrame) -> pd.Series:
         """

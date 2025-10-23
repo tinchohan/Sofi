@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Datos - Calculadora de Tarifas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 2rem auto;
+            max-width: 1200px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+        }
+        
+        .content-section {
+            padding: 2rem;
+        }
+        
+        .upload-area {
+            border: 2px dashed #4facfe;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #00f2fe;
+            background: rgba(79, 172, 254, 0.05);
+        }
+        
+        .upload-area.dragover {
+            border-color: #00f2fe;
+            background: rgba(79, 172, 254, 0.1);
+        }
+        
+        .btn-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+        }
+        
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #4facfe;
+            box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="header">
+                <h1><i class="fas fa-database"></i> Gestión de Datos</h1>
+                <p class="mb-0">Carga tus propios datos para mejorar las predicciones</p>
+            </div>
+            
+            <div class="content-section">
+                <!-- Pestañas -->
+                <ul class="nav nav-tabs" id="dataTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" 
+                                data-bs-target="#upload" type="button" role="tab">
+                            <i class="fas fa-upload"></i> Cargar Datos
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sample-tab" data-bs-toggle="tab" 
+                                data-bs-target="#sample" type="button" role="tab">
+                            <i class="fas fa-plus"></i> Crear Muestra
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="predict-tab" data-bs-toggle="tab" 
+                                data-bs-target="#predict" type="button" role="tab">
+                            <i class="fas fa-calculator"></i> Predecir
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="dataTabsContent">
+                    <!-- Pestaña de Carga -->
+                    <div class="tab-pane fade show active" id="upload" role="tabpanel">
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-file-csv"></i> Cargar CSV</h4>
+                                <div class="upload-area" id="uploadArea">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                    <h5>Arrastra tu archivo CSV aquí</h5>
+                                    <p>o haz clic para seleccionar</p>
+                                    <input type="file" id="csvFile" accept=".csv" style="display: none;">
+                                    <button class="btn btn-custom" onclick="document.getElementById('csvFile').click()">
+                                        Seleccionar Archivo
+                                    </button>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <h5>Formato Requerido:</h5>
+                                    <small class="text-muted">
+                                        sqft,bedrooms,bathrooms,property_type,state,city_type,cleaning_type,frequency,cleaning_rate
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-info-circle"></i> Información del Modelo</h4>
+                                <div id="modelInfo">
+                                    <div class="info-card">
+                                        <h5><i class="fas fa-brain"></i> Modelo Actual</h5>
+                                        <p id="modelType">Cargando...</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button class="btn btn-custom" onclick="downloadTemplate()">
+                                        <i class="fas fa-download"></i> Descargar Template
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pestaña de Muestra -->
+                    <div class="tab-pane fade" id="sample" role="tabpanel">
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-plus-circle"></i> Crear Datos de Muestra</h4>
+                                <div class="mb-3">
+                                    <label for="nSamples" class="form-label">Número de Registros:</label>
+                                    <input type="number" class="form-control" id="nSamples" 
+                                           value="100" min="10" max="1000">
+                                </div>
+                                <button class="btn btn-custom" onclick="createSampleData()">
+                                    <i class="fas fa-magic"></i> Crear Datos de Muestra
+                                </button>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-chart-bar"></i> Estadísticas</h4>
+                                <div id="sampleStats" class="stats-grid">
+                                    <!-- Se llenará dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pestaña de Predicción -->
+                    <div class="tab-pane fade" id="predict" role="tabpanel">
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-calculator"></i> Predicción</h4>
+                                <form id="predictionForm">
+                                    <div class="mb-3">
+                                        <label for="predSqft" class="form-label">Metros Cuadrados:</label>
+                                        <input type="number" class="form-control" id="predSqft" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="predBedrooms" class="form-label">Habitaciones:</label>
+                                        <input type="number" class="form-control" id="predBedrooms" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="predBathrooms" class="form-label">Baños:</label>
+                                        <input type="number" class="form-control" id="predBathrooms" step="0.5" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="predPropertyType" class="form-label">Tipo de Propiedad:</label>
+                                        <select class="form-select" id="predPropertyType" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="house">Casa</option>
+                                            <option value="apartment">Apartamento</option>
+                                            <option value="condo">Condominio</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="predState" class="form-label">Estado:</label>
+                                        <select class="form-select" id="predState" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="CA">California</option>
+                                            <option value="NY">Nueva York</option>
+                                            <option value="TX">Texas</option>
+                                            <option value="FL">Florida</option>
+                                            <option value="WA">Washington</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="predCityType" class="form-label">Tipo de Ciudad:</label>
+                                        <select class="form-select" id="predCityType" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="major_metro">Metrópolis Principal</option>
+                                            <option value="large_city">Ciudad Grande</option>
+                                            <option value="medium_city">Ciudad Mediana</option>
+                                            <option value="small_city">Ciudad Pequeña</option>
+                                            <option value="rural">Área Rural</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="predCleaningType" class="form-label">Tipo de Limpieza:</label>
+                                        <select class="form-select" id="predCleaningType" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="basic">Básica</option>
+                                            <option value="deep">Profunda</option>
+                                            <option value="post_construction">Post-Construcción</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="predFrequency" class="form-label">Frecuencia:</label>
+                                        <select class="form-select" id="predFrequency" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="one_time">Una vez</option>
+                                            <option value="weekly">Semanal</option>
+                                            <option value="monthly">Mensual</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-custom">
+                                        <i class="fas fa-calculator"></i> Predecir Tarifa
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-chart-line"></i> Resultado</h4>
+                                <div id="predictionResult" class="info-card" style="display: none;">
+                                    <h5><i class="fas fa-dollar-sign"></i> Tarifa Estimada</h5>
+                                    <div id="predictedRate" class="display-4">$0</div>
+                                    <div id="confidenceInterval" class="mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Loading -->
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p class="mt-3">Procesando...</p>
+                </div>
+                
+                <!-- Alertas -->
+                <div id="alerts"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Cargar información del modelo al inicio
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModelInfo();
+        });
+        
+        function loadModelInfo() {
+            fetch('/model_info')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('modelType').textContent = 
+                            data.model_type === 'real_data' ? 'Modelo con datos reales' : 'Modelo sintético';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        // Manejo de carga de archivos
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                uploadCSV(file);
+            }
+        });
+        
+        // Drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.csv')) {
+                uploadCSV(file);
+            } else {
+                showAlert('Por favor selecciona un archivo CSV', 'warning');
+            }
+        });
+        
+        function uploadCSV(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showLoading(true);
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if (data.success) {
+                    showAlert('Datos cargados y modelo entrenado exitosamente', 'success');
+                    loadModelInfo();
+                } else {
+                    showAlert(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showAlert('Error cargando archivo', 'danger');
+            });
+        }
+        
+        function createSampleData() {
+            const nSamples = document.getElementById('nSamples').value;
+            
+            showLoading(true);
+            
+            fetch('/create_sample', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({n_samples: parseInt(nSamples)})
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if (data.success) {
+                    showAlert(`Datos de muestra creados (${nSamples} registros)`, 'success');
+                    showSampleStats(data.data_summary);
+                    loadModelInfo();
+                } else {
+                    showAlert(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showAlert('Error creando datos de muestra', 'danger');
+            });
+        }
+        
+        function showSampleStats(stats) {
+            const statsHtml = `
+                <div class="stat-card">
+                    <h6>Total Registros</h6>
+                    <h4>${stats.total_records}</h4>
+                </div>
+                <div class="stat-card">
+                    <h6>Tarifa Promedio</h6>
+                    <h4>$${stats.avg_rate.toFixed(2)}</h4>
+                </div>
+                <div class="stat-card">
+                    <h6>Tarifa Mínima</h6>
+                    <h4>$${stats.min_rate.toFixed(2)}</h4>
+                </div>
+                <div class="stat-card">
+                    <h6>Tarifa Máxima</h6>
+                    <h4>$${stats.max_rate.toFixed(2)}</h4>
+                </div>
+            `;
+            document.getElementById('sampleStats').innerHTML = statsHtml;
+        }
+        
+        function downloadTemplate() {
+            fetch('/download_template')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('Template CSV creado', 'success');
+                        // Aquí podrías implementar la descarga real
+                    } else {
+                        showAlert(data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showAlert('Error creando template', 'danger');
+                });
+        }
+        
+        // Manejo de predicción
+        document.getElementById('predictionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const data = {
+                sqft: parseFloat(document.getElementById('predSqft').value),
+                bedrooms: parseInt(document.getElementById('predBedrooms').value),
+                bathrooms: parseFloat(document.getElementById('predBathrooms').value),
+                property_type: document.getElementById('predPropertyType').value,
+                state: document.getElementById('predState').value,
+                city_type: document.getElementById('predCityType').value,
+                cleaning_type: document.getElementById('predCleaningType').value,
+                frequency: document.getElementById('predFrequency').value
+            };
+            
+            showLoading(true);
+            
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if (data.success) {
+                    showPredictionResult(data.prediction);
+                } else {
+                    showAlert(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showAlert('Error en predicción', 'danger');
+            });
+        });
+        
+        function showPredictionResult(prediction) {
+            document.getElementById('predictedRate').textContent = `$${prediction.predicted_rate}`;
+            document.getElementById('confidenceInterval').innerHTML = 
+                `Rango: $${prediction.confidence_interval.lower} - $${prediction.confidence_interval.upper}`;
+            document.getElementById('predictionResult').style.display = 'block';
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+        
+        function showAlert(message, type) {
+            const alertsDiv = document.getElementById('alerts');
+            const alertHtml = `
+                <div class="alert alert-${type} alert-custom alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            alertsDiv.innerHTML = alertHtml;
+        }
+    </script>
+</body>
+</html>

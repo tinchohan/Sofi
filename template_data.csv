@@ -1,0 +1,11 @@
+sqft,bedrooms,bathrooms,property_type,state,city_type,cleaning_type,frequency,cleaning_rate
+2500,4,3,house,CA,large_city,basic,one_time,450.00
+1800,3,2,apartment,NY,major_metro,deep,weekly,320.00
+3000,4,3,house,TX,medium_city,basic,monthly,280.00
+1200,2,2,condo,FL,large_city,deep,one_time,380.00
+2200,3,2,house,WA,small_city,basic,weekly,250.00
+3500,5,4,house,CA,major_metro,post_construction,one_time,1200.00
+1600,3,2,apartment,NY,large_city,basic,monthly,220.00
+2800,4,3,house,TX,rural,deep,one_time,400.00
+1400,2,2,condo,FL,medium_city,basic,weekly,180.00
+3200,4,3,house,WA,large_city,deep,one_time,520.00
